@@ -59,3 +59,16 @@ You can see an example in the following image:
 <p>
 <img src="https://raw.githubusercontent.com/judcodeofficial/jud-weather-forecast-back/main/resources/console.png" />
 </p>
+
+## Usage
+<p>
+1. You can see the available endpoints in 
+
+```bash  
+routes/api.php
+```
+
+2. Clone <a href="https://github.com/judcodeofficial/jud-weather-forecast-front">front-end project</a>
+3. Try it
+</p>
+
