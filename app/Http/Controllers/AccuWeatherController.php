@@ -45,40 +45,46 @@ class AccuWeatherController extends Controller
     }
 
     public function FindForecastByCityKey($cityKey){
-        $endpointUrl = $this->apiBaseUrl.'/forecasts/v1/daily/5day/'.$cityKey.'?apikey='.$this->apiKey;
+        $response = $this->FindCityByKey($cityKey)->getData();
+        
+        if ($response->status == 'ok') {
+            $cityInfo = $response->data;
+            $endpointUrl = $this->apiBaseUrl.'/forecasts/v1/daily/5day/'.$cityKey.'?apikey='.$this->apiKey;
 
-        $response = new CustomResponse();
+            $response = new CustomResponse();
 
-        $responseRequest = $this->GetRequest($endpointUrl);
+            $responseRequest = $this->GetRequest($endpointUrl);
 
-        if (!is_null($responseRequest) && !empty($responseRequest) || (array_key_exists('Code', $responseRequest) && $responseRequest['Code'] != 'ServiceUnavailable')) {
-            $dailyForecastsList = [
-                'minimum_avg' => 0,
-                'maximum_avg' => 0,
-                'DailyForecasts' => []
-            ];
+            if (!is_null($responseRequest) && !empty($responseRequest) || (array_key_exists('Code', $responseRequest) && $responseRequest['Code'] != 'ServiceUnavailable')) {
+                $dailyForecastsList = [
+                    'locationName' => $cityInfo->LocalizedName,
+                    'minimum_avg' => 0,
+                    'maximum_avg' => 0,
+                    'DailyForecasts' => []
+                ];
 
-            $minimumAvg = 0;
-            $maximumAvg = 0;
-            foreach ($responseRequest['DailyForecasts'] as $dailyForecast) {
-                $newDailyForecast = new DailyForecast();
-                $newDailyForecast->date = $dailyForecast['Date'];
-                $newDailyForecast->minimum_temperature = $dailyForecast['Temperature']['Minimum']['Value'];
-                $newDailyForecast->maximum_temperature = $dailyForecast['Temperature']['Maximum']['Value'];
+                $minimumAvg = 0;
+                $maximumAvg = 0;
+                foreach ($responseRequest['DailyForecasts'] as $dailyForecast) {
+                    $newDailyForecast = new DailyForecast();
+                    $newDailyForecast->date = $dailyForecast['Date'];
+                    $newDailyForecast->minimum_temperature = $dailyForecast['Temperature']['Minimum']['Value'];
+                    $newDailyForecast->maximum_temperature = $dailyForecast['Temperature']['Maximum']['Value'];
 
-                $minimumAvg += $newDailyForecast->minimum_temperature;
-                $maximumAvg += $newDailyForecast->maximum_temperature;
+                    $minimumAvg += $newDailyForecast->minimum_temperature;
+                    $maximumAvg += $newDailyForecast->maximum_temperature;
 
-                array_push($dailyForecastsList['DailyForecasts'], $newDailyForecast);
+                    array_push($dailyForecastsList['DailyForecasts'], $newDailyForecast);
+                }
+
+                $dailyForecastsList['minimum_avg'] = $minimumAvg / 5;
+                $dailyForecastsList['maximum_avg'] = $maximumAvg / 5;
+
+                $response->SetOk($dailyForecastsList , '');
             }
-
-            $dailyForecastsList['minimum_avg'] = $minimumAvg / 5;
-            $dailyForecastsList['maximum_avg'] = $maximumAvg / 5;
-
-            $response->SetOk($dailyForecastsList , '');
-        }
-        else {
-            $response->SetNotFound();
+            else {
+                $response->SetNotFound();
+            }
         }
 
         return response()->json($response);
@@ -109,6 +115,30 @@ class AccuWeatherController extends Controller
         }
 
         $endpointUrl .= $cityName.'&apikey='.$this->apiKey;
+
+        $responseRequest = $this->GetRequest($endpointUrl);
+
+        if (!is_null($responseRequest) && !empty($responseRequest) || (array_key_exists('Code', $responseRequest) && $responseRequest['Code'] != 'ServiceUnavailable')) {
+            $response->SetOk($responseRequest , '');
+        }
+        else {
+            $response->SetNotFound();
+        }
+
+
+        return response()->json($response);
+    }
+
+    private function FindCityByKey($cityKey){
+        $endpointUrl = $this->apiBaseUrl."/locations/v1/";
+        $response = new CustomResponse();
+
+        if (is_null($cityKey) || empty(trim($cityKey))) {
+            $response->SetError('You must type a key');
+            return $response;
+        }
+
+        $endpointUrl .= $cityKey.'?apikey='.$this->apiKey;
 
         $responseRequest = $this->GetRequest($endpointUrl);
 
